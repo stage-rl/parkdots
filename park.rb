@@ -48,31 +48,64 @@ def swipe_to_pay(driver, button)
     .release
     .perform
 end
+def run_test(caps)
+  begin
+    core = Appium::Core.for url: "http://127.0.0.1:4723", caps: caps
+    driver = core.start_driver
+    driver.terminate_app("com.parkdots.sp")
+    sleep 2
+    driver.activate_app("com.parkdots.sp")
+    sleep 2
+    el1 = driver.find_element :id, "android:id/button2"
+    el1.click
+    el2 = driver.find_element :id, "com.parkdots.sp:id/text_search"
+    el2.click
+    driver.save_screenshot("screenshot.png")
+    el3 = driver.find_element :id, "com.parkdots.sp:id/editSearch"
+    el3.click
+    el3.send_keys "hodzovo"
+    el4 = driver.find_element :uiautomator, "new UiSelector().text(\"1101 - Hodžovo námestie\")"
+    el4.click
+    driver.save_screenshot("screenshot.png")
+    el5 = driver.find_element :accessibility_id, "Buy ticket"
+    el5.click
+    el6 = driver.find_element :id, "com.parkdots.sp:id/text_parking_duration_subtitle"
+    el6.click
+    set_time(current_time)
+    swipe_to_pay_button = driver.find_element :uiautomator, "new UiSelector().text(\"SWIPE TO PAY\")"
+    swipe_to_pay(driver, swipe_to_pay_button)
+  rescue => e # Catch any exception
+      puts "Test failed with error: #{e.message}"
 
-core = Appium::Core.for url: "http://127.0.0.1:4723", caps: caps
-driver = core.start_driver
-driver.terminate_app("com.parkdots.sp")
-sleep 2
-driver.activate_app("com.parkdots.sp")
-sleep 2
-el1 = driver.find_element :id, "android:id/button2"
-el1.click
-el2 = driver.find_element :id, "com.parkdots.sp:id/text_search"
-el2.click
-driver.save_screenshot("screenshot.png")
-el3 = driver.find_element :id, "com.parkdots.sp:id/editSearch"
-el3.click
-el3.send_keys "hodzovo"
-el4 = driver.find_element :uiautomator, "new UiSelector().text(\"1101 - Hodžovo námestie\")"
-el4.click
-driver.save_screenshot("screenshot.png")
-el5 = driver.find_element :accessibility_id, "Buy ticket"
-el5.click
-el6 = driver.find_element :id, "com.parkdots.sp:id/text_parking_duration_subtitle"
-el6.click
-set_time(current_time)
-swipe_to_pay_button = driver.find_element :uiautomator, "new UiSelector().text(\"SWIPE TO PAY\")"
-swipe_to_pay(driver, swipe_to_pay_button)
+      # Define screenshot path
+      screenshot_dir = File.expand_path('./screenshots', __dir__) # Relative to current file
+      FileUtils.mkdir_p(screenshot_dir) unless File.directory?(screenshot_dir)
 
-driver.quit
+      # Create unique filename
+      timestamp = Time.now.strftime("%Y%m%d_%H%M%S")
+      screenshot_name = "screenshot_#{timestamp}.png"
+      screenshot_path = File.join(screenshot_dir, screenshot_name)
 
+      begin
+        driver.save_screenshot(screenshot_path)
+        puts "Screenshot saved to: #{screenshot_path}"
+      rescue Selenium::WebDriver::Error::WebDriverError => screenshot_err
+        puts "WARNING: Could not take screenshot: #{screenshot_err.message}"
+      rescue StandardError => unexpected_err
+        puts "WARNING: An unexpected error occurred while saving screenshot: #{unexpected_err.message}"
+      end
+
+      # Re-raise the original exception so the test framework knows it failed
+      raise e
+
+    ensure
+      # This block always runs, whether there's an error or not.
+      # Good place to quit the driver if you're managing it per test.
+      if defined?(driver) && driver.is_a?(Selenium::WebDriver::Driver) && driver.session_id
+        puts "Quitting driver after test: #{test_name}"
+        driver.quit
+      end
+  end
+end
+
+run_test(caps)
